@@ -1,7 +1,7 @@
 <template>
   <div class="ratio-16-9">
     <div class="inner">
-      <canvas id="screen"></canvas>
+      <canvas id="screen" ref="screen" />
     </div>
   </div>
   <div>
@@ -9,13 +9,15 @@
       <div
         v-for="(ico, direction) of directionIco"
         :class="['arrow', directionType[direction] === true && 'on']"
-      >{{ico}}</div>
+      >{{ ico }}</div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
+import { ref, reactive, onMounted } from 'vue'
+import NewpalletTown from '@/assets/NewpalletTown.PNG.webp'
+const screen = ref<HTMLCanvasElement>()
 const directionIco = reactive({
   top: '↑',
   left: '←',
@@ -27,6 +29,22 @@ const directionType = reactive({
   left: false,
   right: false,
   Down: false,
+})
+
+onMounted(() => {
+  const el = screen.value as HTMLCanvasElement
+  const rect = el.getBoundingClientRect()
+  const { width, height } = rect
+  el.width = width
+  el.height = height
+  const ctx = el.getContext('2d')
+  const img = new Image()
+  img.src = NewpalletTown
+
+  img.onload = () => {
+    if (img.complete) ctx?.drawImage(img, 0, 0, img.width, img.height)
+  }
+
 })
 
 const keyDownCallback = (bool: boolean) => (event: KeyboardEvent) => {
