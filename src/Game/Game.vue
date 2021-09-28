@@ -17,13 +17,29 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import NewpalletTown from '@/assets/NewpalletTown.PNG.webp'
+const WIDTH = 400
+const HEIGHT = 400
+const imgReady = ref(false)
 const screen = ref<HTMLCanvasElement>()
+const img = new Image()
+img.src = NewpalletTown
+img.onload = () => {
+  if (img.complete) imgReady.value = true
+  draw()
+}
+
+const position = reactive({
+  x: 0,
+  y: 0
+})
+
 const directionIco = reactive({
   top: '↑',
   left: '←',
   right: '→',
   Down: '↓',
 })
+
 const directionType = reactive({
   top: false,
   left: false,
@@ -31,39 +47,50 @@ const directionType = reactive({
   Down: false,
 })
 
+const draw = () => {
+  if (!imgReady.value) return
+  if (!screen.value) return
+  const el = screen.value as HTMLCanvasElement
+  const ctx = el.getContext('2d') as CanvasRenderingContext2D
+  ctx.drawImage(img,
+    -img.width / 2 + position.x,
+    -img.height / 2 + position.y,
+    img.width,
+    img.height)
+
+}
+
 onMounted(() => {
   const el = screen.value as HTMLCanvasElement
-  const rect = el.getBoundingClientRect()
-  const { width, height } = rect
-  el.width = width
-  el.height = height
-  const ctx = el.getContext('2d')
-  const img = new Image()
-  img.src = NewpalletTown
-
-  img.onload = () => {
-    if (img.complete) ctx?.drawImage(img, 0, 0, img.width, img.height)
-  }
-
+  const ctx = el.getContext('2d') as CanvasRenderingContext2D
+  el.width = WIDTH
+  el.height = HEIGHT
+  ctx.translate(WIDTH / 2, HEIGHT / 2)
+  draw()
 })
 
 const keyDownCallback = (bool: boolean) => (event: KeyboardEvent) => {
   switch (event.key) {
     case 'ArrowUp':
+      position.y++
       directionType.top = bool
       break;
     case 'ArrowLeft':
+      position.x++
       directionType.left = bool
       break;
     case 'ArrowRight':
+      position.x--
       directionType.right = bool
       break;
     case 'ArrowDown':
+      position.y--
       directionType.Down = bool
       break;
     default:
       break;
   }
+  draw()
 }
 document.addEventListener('keydown', keyDownCallback(true))
 document.addEventListener('keyup', keyDownCallback(false))
