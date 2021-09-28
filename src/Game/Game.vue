@@ -29,38 +29,42 @@ img.onload = () => {
   draw()
 }
 
-const position = reactive({
+const position: {[key: string]: number} = reactive({
   x: 0,
   y: 0
 })
 
-const directionIco = reactive({
+interface Direction<T = any> {
+  [key: string]: T
+}
+
+const directionIco: Direction<string> = {
   top: '↑',
   left: '←',
   right: '→',
   Down: '↓',
-})
+}
 
-const directionType = reactive({
+const directionType: Direction<boolean> = reactive({
   top: false,
   left: false,
   right: false,
   Down: false,
 })
 
-const directionRule = reactive({
+const directionRule: Direction<string> = {
   top: 'y',
   left: 'x',
   right: 'x',
   Down: 'y',
-})
+}
 
-const directionSpeed = reactive({
+const directionSpeed: Direction<number> = {
   top: speed,
   left: speed,
   right: -speed,
   Down: -speed,
-})
+}
 
 const directionKey = reactive({
   'ArrowUp': 'top',
@@ -74,9 +78,9 @@ const draw = () => {
   if (!screen.value) return
   const el = screen.value as HTMLCanvasElement
   const ctx = el.getContext('2d') as CanvasRenderingContext2D
-
   for (const type in directionType) {
-    if (directionType[type]) position[directionRule[type]] += directionSpeed[type]
+    if (directionType[type]) 
+      position[directionRule[type]] += directionSpeed[type]
   }
 
   ctx.drawImage(img,
