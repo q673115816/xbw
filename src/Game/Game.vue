@@ -37,10 +37,13 @@ const createSpeed = (speed: number) => ({
 interface Position {
   x: number
   y: number
-  dir?: Dir
 }
 
-const bullets: Set<Position> = reactive(new Set)
+interface Bullets extends Position {
+  dir: Dir
+}
+
+const bullets: Set<Bullets> = reactive(new Set)
 const position: Position = reactive({
   x: 0,
   y: 0
@@ -51,7 +54,7 @@ type Dir = 'top' | 'left' | 'right' | 'down'
 interface Direction {
   current: Dir,
   type: {
-    [key: string]: boolean
+    [key in Dir]: boolean
   },
   speed: {
     [key: string]: number
@@ -66,7 +69,11 @@ const directionIco = {
   down: '↓',
 }
 
-const RULE = {
+type Rule = {
+[key in Dir]: keyof Position
+}
+
+const RULE: Rule = {
   top: 'y',
   left: 'x',
   right: 'x',
@@ -84,7 +91,11 @@ const direction: Direction = reactive({
   speed: createSpeed(speed)
 })
 
-const directionKey = {
+interface DirectionKey {
+  [key: string]: Dir
+}
+
+const directionKey: DirectionKey = {
   'ArrowUp': 'top',
   'ArrowLeft': 'left',
   'ArrowRight': 'right',
@@ -102,8 +113,8 @@ const draw = () => {
 
 
   for (const type in direction.type) {
-    if (direction.type[type])
-      position[RULE[type]] += direction.speed[type]
+    if (direction.type[type as Dir])
+      position[RULE[type as Dir]] += direction.speed[type]
   }
 
   for (const bullet of bullets) {
