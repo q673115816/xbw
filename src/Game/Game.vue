@@ -7,8 +7,8 @@
   <div>
     <div id="direction">
       <div
-        v-for="(ico, direction) of directionIco"
-        :class="['arrow', directionType[direction] === true && 'on']"
+        v-for="(ico, dir) of directionIco"
+        :class="['arrow', direction['type'][dir] === true && 'on']"
       >{{ ico }}</div>
     </div>
   </div>
@@ -16,82 +16,131 @@
 
 <script setup lang="ts">
 import { ref, reactive, onMounted, watch } from 'vue'
-import NewpalletTown from '@/assets/NewpalletTown.PNG.webp'
 const WIDTH = 400
 const HEIGHT = 400
-const imgReady = ref(false)
-const speed = 10
+const speed = 4
+const ratio = 20
+const spaceRatio = 50
+const spaceSpeed = 12
 const screen = ref<HTMLCanvasElement>()
-const img = new Image()
-img.src = NewpalletTown
-img.onload = () => {
-  if (img.complete) imgReady.value = true
-  draw()
+const getRect = (el: HTMLCanvasElement, ratio: number) => {
+  return [el.width / ratio, el.height / ratio]
 }
 
-const position: {[key: string]: number} = reactive({
+const createSpeed = (speed: number) => ({
+  top: -speed,
+  left: -speed,
+  right: speed,
+  down: speed,
+})
+
+interface Position {
+  x: number
+  y: number
+  dir?: Dir
+}
+
+const bullets: Set<Position> = reactive(new Set)
+const position: Position = reactive({
   x: 0,
   y: 0
 })
 
-interface Direction<T = any> {
-  [key: string]: T
+type Dir = 'top' | 'left' | 'right' | 'down'
+
+interface Direction {
+  current: Dir,
+  type: {
+    [key: string]: boolean
+  },
+  speed: {
+    [key: string]: number
+  },
 }
 
-const directionIco: Direction<string> = {
+
+const directionIco = {
   top: '↑',
   left: '←',
   right: '→',
-  Down: '↓',
+  down: '↓',
 }
 
-const directionType: Direction<boolean> = reactive({
-  top: false,
-  left: false,
-  right: false,
-  Down: false,
-})
-
-const directionRule: Direction<string> = {
+const RULE = {
   top: 'y',
   left: 'x',
   right: 'x',
-  Down: 'y',
+  down: 'y',
 }
 
-const directionSpeed: Direction<number> = {
-  top: speed,
-  left: speed,
-  right: -speed,
-  Down: -speed,
-}
+const direction: Direction = reactive({
+  current: 'top',
+  type: {
+    top: false,
+    left: false,
+    right: false,
+    down: false,
+  },
+  speed: createSpeed(speed)
+})
 
-const directionKey = reactive({
+const directionKey = {
   'ArrowUp': 'top',
   'ArrowLeft': 'left',
   'ArrowRight': 'right',
-  'ArrowDown': 'Down',
+  'ArrowDown': 'down',
+}
+
+const space = reactive({
+  speed: createSpeed(spaceSpeed)
 })
 
 const draw = () => {
-  if (!imgReady.value) return
   if (!screen.value) return
   const el = screen.value as HTMLCanvasElement
   const ctx = el.getContext('2d') as CanvasRenderingContext2D
-  for (const type in directionType) {
-    if (directionType[type]) 
-      position[directionRule[type]] += directionSpeed[type]
+
+
+  for (const type in direction.type) {
+    if (direction.type[type])
+      position[RULE[type]] += direction.speed[type]
   }
 
-  ctx.drawImage(img,
-    -img.width / 2 + position.x,
-    -img.height / 2 + position.y,
-    img.width,
-    img.height)
+  for (const bullet of bullets) {
+    bullet[RULE[bullet.dir]] += space.speed[bullet.dir]
+    console.log(bullet);
+    if (bullet.y > el.height / 2 ||
+      bullet.y < -el.height / 2 ||
+      bullet.x > el.width / 2 ||
+      bullet.x < -el.width / 2)
+      bullets.delete(bullet)
+  }
+
+  // ctx.restore()
+
+  ctx.fillStyle = '#000'
+  ctx.rect(-el.width / 2, -el.height / 2, el.width, el.height)
+  ctx.fill()
+  ctx.beginPath()
+  // ctx.clearRect(-el.width / 2, -el.height / 2, el.width, el.width)
+  const [w, h] = getRect(el, ratio)
+  ctx.fillStyle = 'yellow'
+  ctx.rect(position.x - w / 2,
+    position.y - h / 2,
+    w, h)
+  ctx.fill()
+  const [bullet_w, bullet_h] = getRect(el, spaceRatio)
+  ctx.beginPath()
+  for (const bullet of bullets) {
+    ctx.fillStyle = 'white'
+    ctx.rect(bullet.x - bullet_w / 2,
+      bullet.y - bullet_h / 2,
+      bullet_w, bullet_h)
+  }
+  ctx.fill()
   requestAnimationFrame(draw)
 }
 
-requestAnimationFrame(draw)
 
 onMounted(() => {
   const el = screen.value as HTMLCanvasElement
@@ -99,31 +148,42 @@ onMounted(() => {
   el.width = WIDTH
   el.height = HEIGHT
   ctx.translate(WIDTH / 2, HEIGHT / 2)
+  ctx.save()
+  requestAnimationFrame(draw)
 })
 
 // watch(directionType, (next, before) => {
 //   console.log(next, before);
 // })
 
-const keyDownCallback = (bool: boolean) => (event: KeyboardEvent) => {
-  switch (event.key) {
+const keyDownCallback = (bool: boolean, cb?: (code: string) => void) => (event: KeyboardEvent) => {
+  if (event.code in directionKey) {
+    if (bool) cb && cb(event.code)
+  }
+  switch (event.code) {
     case 'ArrowUp':
-      directionType.top = bool
+      direction.type.top = bool
       break;
     case 'ArrowLeft':
-      directionType.left = bool
+      direction.type.left = bool
       break;
     case 'ArrowRight':
-      directionType.right = bool
+      direction.type.right = bool
       break;
     case 'ArrowDown':
-      directionType.Down = bool
+      direction.type.down = bool
+      break;
+    case 'Space':
+      if (bool)
+        bullets.add({ ...position, dir: direction.current })
       break;
     default:
       break;
   }
 }
-document.addEventListener('keydown', keyDownCallback(true))
+document.addEventListener('keydown', keyDownCallback(true, (code) => {
+  direction.current = directionKey[code]
+}))
 document.addEventListener('keyup', keyDownCallback(false))
 
 </script>
